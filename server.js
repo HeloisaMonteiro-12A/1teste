@@ -12,6 +12,23 @@ const PORTA = process.env.PORT || 3000;
 app.use(express.json());
 
 // -------------------------------------------------------------------
+// LOG DE TODAS AS REQUISIÇÕES
+// (o painel consulta /api/status a cada 1s; isso não é registrado para não poluir)
+// -------------------------------------------------------------------
+app.use((req, res, next) => {
+  const inicio = Date.now();
+  res.on("finish", () => {
+    if (req.path === "/api/status") return;
+    const corpo = req.method === "POST" ? " | corpo: " + JSON.stringify(req.body) : "";
+    console.log(
+      `[${horaAgora()}] ${req.method} ${req.path} -> ${res.statusCode} em ${Date.now() - inicio} ms` +
+      ` | origem: ${req.headers["x-forwarded-for"] || req.ip}${corpo}`
+    );
+  });
+  next();
+});
+
+// -------------------------------------------------------------------
 // ESTADO EM MEMÓRIA (zera quando o servidor reinicia)
 // -------------------------------------------------------------------
 let ultimaLeitura = null;      // { batimentos, aceleracao, recebidoEm }
@@ -23,7 +40,8 @@ const MAX_HISTORICO = 60;
 const SEGUNDOS_PARA_OFFLINE = 10;
 
 function horaAgora() {
-  return new Date().toLocaleTimeString("pt-BR");
+  // a Vercel roda em UTC; força o horário de Brasília nos logs
+  return new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
 function numeroOuNull(valor) {
@@ -97,6 +115,12 @@ app.post("/api/alerta/reconhecer", (req, res) => {
 });
 
 app.get("/", (req, res) => res.send(PAINEL_HTML));
+
+// JSON malformado ou outro erro: registra e responde em vez de quebrar
+app.use((err, req, res, next) => {
+  console.log(`[${horaAgora()}] ERRO em ${req.method} ${req.path}: ${err.message}`);
+  res.status(400).json({ erro: "Requisição inválida: " + err.message });
+});
 
 // -------------------------------------------------------------------
 // INICIALIZAÇÃO: mostra os IPs para colocar no código do ESP32
