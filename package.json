@@ -1,0 +1,12 @@
+{
+  "name": "servidor-monitor",
+  "version": "1.0.0",
+  "description": "Servidor que recebe telemetria e alertas do ESP32 e mostra um painel de acompanhamento",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
